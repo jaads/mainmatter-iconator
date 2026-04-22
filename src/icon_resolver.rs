@@ -1,5 +1,3 @@
-pub mod rest_api;
-
 use fst::Map;
 use lazy_static::lazy_static;
 use std::{os::unix::ffi::OsStrExt, path::Path};

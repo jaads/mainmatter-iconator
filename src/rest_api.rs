@@ -1,13 +1,7 @@
-use axum::{
-    extract::Query,
-    http::StatusCode,
-    response::IntoResponse,
-    routing::get,
-    Json, Router,
-};
+use axum::{Json, Router, extract::Query, http::StatusCode, response::IntoResponse, routing::get};
 use serde::{Deserialize, Serialize};
 
-use crate::{get_icon_for_file, get_icon_for_folder};
+use crate::icon_resolver::{get_icon_for_file, get_icon_for_folder};
 
 #[derive(Debug, Deserialize)]
 struct PathQuery {

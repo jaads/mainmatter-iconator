@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 
-use iconator::rest_api;
+pub mod icon_resolver;
+mod rest_api;
 
 #[tokio::main]
 async fn main() {
