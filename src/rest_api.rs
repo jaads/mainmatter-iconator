@@ -1,6 +1,13 @@
-use axum::{Json, Router, extract::Query, http::StatusCode, response::IntoResponse, routing::get};
-use serde::{Deserialize, Serialize};
+use axum::{
+    Router,
+    extract::Query,
+    http::{StatusCode, header},
+    response::{IntoResponse, Response},
+    routing::get,
+};
+use serde::Deserialize;
 
+use crate::file_loader::load_icon_svg;
 use crate::icon_resolver::{get_icon_for_file, get_icon_for_folder};
 
 #[derive(Debug, Deserialize)]
@@ -8,57 +15,38 @@ struct PathQuery {
     path: String,
 }
 
-#[derive(Debug, Serialize)]
-struct IconResponse {
-    icon_id: u64,
-    path: String,
+/// Creates an SVG response with proper Content-Type header
+fn svg_response(svg_content: String) -> Response {
+    (
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "image/svg+xml")],
+        svg_content,
+    )
+        .into_response()
 }
 
-#[derive(Debug, Serialize)]
-struct ErrorResponse {
-    error: String,
-    path: String,
+/// Creates an error response for when no icon is found
+fn not_found_response(message: &str) -> Response {
+    (StatusCode::NOT_FOUND, message.to_string()).into_response()
 }
 
-async fn file_icon(Query(query): Query<PathQuery>) -> impl IntoResponse {
+async fn file_icon(Query(query): Query<PathQuery>) -> Response {
     match get_icon_for_file(&query.path) {
-        Some(icon_id) => (
-            StatusCode::OK,
-            Json(IconResponse {
-                icon_id,
-                path: query.path,
-            }),
-        )
-            .into_response(),
-        None => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: "No icon found for file".to_string(),
-                path: query.path,
-            }),
-        )
-            .into_response(),
+        Some(icon_id) => match load_icon_svg(icon_id) {
+            Ok(svg) => svg_response(svg),
+            Err(_) => not_found_response("Icon file not found on disk"),
+        },
+        None => not_found_response("No icon found for file"),
     }
 }
 
-async fn folder_icon(Query(query): Query<PathQuery>) -> impl IntoResponse {
+async fn folder_icon(Query(query): Query<PathQuery>) -> Response {
     match get_icon_for_folder(&query.path) {
-        Some(icon_id) => (
-            StatusCode::OK,
-            Json(IconResponse {
-                icon_id,
-                path: query.path,
-            }),
-        )
-            .into_response(),
-        None => (
-            StatusCode::NOT_FOUND,
-            Json(ErrorResponse {
-                error: "No icon found for folder".to_string(),
-                path: query.path,
-            }),
-        )
-            .into_response(),
+        Some(icon_id) => match load_icon_svg(icon_id) {
+            Ok(svg) => svg_response(svg),
+            Err(_) => not_found_response("Icon file not found on disk"),
+        },
+        None => not_found_response("No icon found for folder"),
     }
 }
 

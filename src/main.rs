@@ -1,5 +1,6 @@
 use std::net::SocketAddr;
 
+mod file_loader;
 pub mod icon_resolver;
 mod rest_api;
 
