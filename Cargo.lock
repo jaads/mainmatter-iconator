@@ -200,9 +200,12 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "fst",
+ "http-body-util",
  "lazy_static",
  "serde",
+ "serde_json",
  "tokio",
+ "tower",
 ]
 
 [[package]]
