@@ -1,11 +1,11 @@
 use axum::{
-    Router,
+    Json, Router,
     extract::Query,
     http::{StatusCode, header},
     response::{IntoResponse, Response},
     routing::get,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::file_loader::load_icon_svg;
 use crate::icon_resolver::{get_icon_for_file, get_icon_for_folder};
@@ -15,7 +15,46 @@ struct PathQuery {
     path: String,
 }
 
-/// Creates an SVG response with proper Content-Type header
+#[derive(Debug, Serialize)]
+struct IconResponse {
+    icon_id: u64,
+}
+
+#[derive(Debug, Serialize)]
+struct ErrorResponse {
+    error: String,
+}
+
+// === JSON Endpoints (return icon ID) ===
+
+async fn file_icon_id(Query(query): Query<PathQuery>) -> Response {
+    match get_icon_for_file(&query.path) {
+        Some(icon_id) => (StatusCode::OK, Json(IconResponse { icon_id })).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: "No icon found for file".to_string(),
+            }),
+        )
+            .into_response(),
+    }
+}
+
+async fn folder_icon_id(Query(query): Query<PathQuery>) -> Response {
+    match get_icon_for_folder(&query.path) {
+        Some(icon_id) => (StatusCode::OK, Json(IconResponse { icon_id })).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(ErrorResponse {
+                error: "No icon found for folder".to_string(),
+            }),
+        )
+            .into_response(),
+    }
+}
+
+// === SVG Endpoints (return actual SVG content) ===
+
 fn svg_response(svg_content: String) -> Response {
     (
         StatusCode::OK,
@@ -25,12 +64,11 @@ fn svg_response(svg_content: String) -> Response {
         .into_response()
 }
 
-/// Creates an error response for when no icon is found
 fn not_found_response(message: &str) -> Response {
     (StatusCode::NOT_FOUND, message.to_string()).into_response()
 }
 
-async fn file_icon(Query(query): Query<PathQuery>) -> Response {
+async fn file_icon_svg(Query(query): Query<PathQuery>) -> Response {
     match get_icon_for_file(&query.path) {
         Some(icon_id) => match load_icon_svg(icon_id) {
             Ok(svg) => svg_response(svg),
@@ -40,7 +78,7 @@ async fn file_icon(Query(query): Query<PathQuery>) -> Response {
     }
 }
 
-async fn folder_icon(Query(query): Query<PathQuery>) -> Response {
+async fn folder_icon_svg(Query(query): Query<PathQuery>) -> Response {
     match get_icon_for_folder(&query.path) {
         Some(icon_id) => match load_icon_svg(icon_id) {
             Ok(svg) => svg_response(svg),
@@ -50,6 +88,8 @@ async fn folder_icon(Query(query): Query<PathQuery>) -> Response {
     }
 }
 
+// === Health Endpoint ===
+
 async fn health() -> impl IntoResponse {
     StatusCode::OK
 }
@@ -57,6 +97,10 @@ async fn health() -> impl IntoResponse {
 pub fn router() -> Router {
     Router::new()
         .route("/health", get(health))
-        .route("/icon/file", get(file_icon))
-        .route("/icon/folder", get(folder_icon))
+        // JSON endpoints (return icon ID)
+        .route("/icon/file", get(file_icon_id))
+        .route("/icon/folder", get(folder_icon_id))
+        // SVG endpoints (return actual SVG content)
+        .route("/icon/file/svg", get(file_icon_svg))
+        .route("/icon/folder/svg", get(folder_icon_svg))
 }

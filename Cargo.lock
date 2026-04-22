@@ -203,6 +203,7 @@ dependencies = [
  "http-body-util",
  "lazy_static",
  "serde",
+ "serde_json",
  "tokio",
  "tower",
 ]
